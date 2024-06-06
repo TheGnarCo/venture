@@ -2,7 +2,7 @@
 
 ## Todo
 
-- Error handling in effect blocks
+- Shore up error handling in effect blocks
 
 ## About
 
@@ -32,6 +32,7 @@ class ThingService
         effects: ->(events) do
           subject = "thing #{thing.id} was created at #{events.first.created_at}")
           ThingCreationMailer.deliver(subject:)
+          Rails.logger.info(subject)
         end
       )
     end 
@@ -69,7 +70,7 @@ doesn't provide much guidance for how application logic should be
 invoked, or what callers should expect. As applications grow,
 symptoms of that vacuum often include controllers being slimmed
 down into thicker models, followed by the creation of [some kind of
-service layer](https://www.youtube.com/watch?v=Oz1c1xdoUFc) once functionality stops corresponding one-to-one
+service layer](https://www.youtube.com/watch?v=Oz1c1xdoUFc&t=11s) once functionality stops corresponding one-to-one
 with model classes.  (I'm using "service layer" in the [Martin Fowler
 sense](https://martinfowler.com/eaaCatalog/serviceLayer.html) of modules that "[establish] a set of available operations
 and [coordinate] the application's response in each operation."
@@ -97,12 +98,12 @@ providing consistent conventions and enforced behavior.
 
 This gem was extracted from an application for certifying state
 employees for work like rideshare driving or child care, where a
-statutory certification required. The employee applies for certification, and must
-stay current by reapplying regularly, say once a year. (Apologies
-for overloading the word "application.") Among other requirements,
-employees should have at most one currrent application, and state
-agencies should be able to make new applications for employees at
-will. That implies a couple things:
+statutory certification is required. The employee applies for
+certification, and must stay current by reapplying regularly, say
+once a year. Among other requirements, employees should have at
+most one currrent application, and state agencies should be able
+to make new applications for employees at will. (Apologies for
+overloading the word "application.") That implies a couple things:
 
 - If an agency creates a new application for an employee who already has one,
 the existing application should be closed in favor of the new one
