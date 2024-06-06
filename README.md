@@ -1,5 +1,7 @@
 # Venture: an event architecture for Rails
 
+Event log with composable services, atomic actions and deferred effects for ActiveRecord.
+
 ## Todo
 
 - Shore up error handling in effect blocks
