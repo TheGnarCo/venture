@@ -166,7 +166,7 @@ yourself imperatively).
 
 Now let's look at how this can be composed into a larger action:
 
-```
+```ruby
   def create_application!(employee_id)
     Venture.as_event!(
       base_params: { employee_id: },
@@ -226,8 +226,8 @@ the closing of a database transaction, because Interactor has no concept
 of the database at all. It operates at a higher level of
 abstraction; our original goal here was a reliable database log of
 a complex application, so it's not surprising it didn't quite line
-up. I also prefer declarative interfaces to things having to imperatively
-`fail!` a context, and to not have to draw a categorical distinction
+up. I also prefer not having to imperatively do
+things like `fail!` a context, and to not have to draw a categorical distinction
 between simple (`Interactor`) and complex (`Organizer`) actions, but those
 last two are pretty subjective.
 
