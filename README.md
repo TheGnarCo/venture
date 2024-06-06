@@ -47,8 +47,6 @@ of two ways:
 - raise an exception
 - return an instance of `Venture::Success`, along with specifications for events to be recorded and effects to be run
 
-....
-
 In case of success, `as_event!` will record any events indicated,
 then check to see if it's executing inside another call to `as_event!`.
 If so, it will queue any effects for execution after the outermost
@@ -70,10 +68,10 @@ recording events. Rails is famously opinionated, but in practice
 doesn't provide much guidance for how application logic should be
 invoked, or what callers should expect. As applications grow,
 symptoms of that vacuum often include controllers being slimmed
-down into thicker models, followed by the creation of some kind of
-service layer once functionality stops corresponding one-to-one
-with model classes.  (I'm using "service layer" in the Martin Fowler
-sense of modules that "[establish] a set of available operations
+down into thicker models, followed by the creation of [some kind of
+service layer](https://www.youtube.com/watch?v=Oz1c1xdoUFc) once functionality stops corresponding one-to-one
+with model classes.  (I'm using "service layer" in the [Martin Fowler
+sense](https://martinfowler.com/eaaCatalog/serviceLayer.html) of modules that "[establish] a set of available operations
 and [coordinate] the application's response in each operation."
 "Service objects" are one way to approach that but not the only
 way.)
@@ -95,13 +93,12 @@ an entire _composed_ operation succeeds, not just until after its
 own `as_event!` block exits succesfully. Developers should not be forced
 to reckon with this every time they add a module to the service
 layer. Instead, the service layer can abstract this functionality,
-providing consistent conventions and enforced behavior across the
-entire application.
+providing consistent conventions and enforced behavior.
 
 This gem was extracted from an application for certifying state
 employees for work like rideshare driving or child care, where a
-statutory certification is made by an application process, and must
-be kept current by reapplying regularly, say once a year. (Apologies
+statutory certification required. The employee applies for certification, and must
+stay current by reapplying regularly, say once a year. (Apologies
 for overloading the word "application.") Among other requirements,
 employees should have at most one currrent application, and state
 agencies should be able to make new applications for employees at
@@ -149,11 +146,11 @@ The application code should either raise an exception, or return an instance of 
 - `events`: One or more events to record. The format here is a hash
 whose keys are event classes, and whose values are hashes of event
 params, or arrays thereof. These will be merged onto the base params
-before creation. Why?  Because (I submit) callers should have the
-details of event creation encapsulated for them. This format may
-not be idiomatic, but it is declarative. If you don't like it, you
-can just create events imperatively in your application code instead. (Just
-remember to merge your base params first.)
+before creation. Why?  Because (I submit) the details of recording
+events should be encapsulated for callers. This format may not be
+idiomatic, but it is declarative. If you don't like it, you can
+also just create events imperatively in your `as_event!` block.
+(Just remember to merge your base params.)
 - `effects`: A lambda to be run on success, which can dispatch those
 things like log messages, confirmation emails, Sidekiq jobs, etc.
 which should only be dispatched if everything succeeds. Because it
@@ -218,12 +215,12 @@ were rolled back (definitely bad). We don't want any of those things.
 Folks here at [Gnar](https://thegnar.co/) are fans of the Interactor
 gem, and I looked at that initially for our needs. It imposes some
 nice structure on the no-person's-land between controllers and
-models, which is valuable in and of itselef, and can accommodate
+models, and can accommodate
 database transactions using its `around` hook. It has `Organizer`
 for composing smaller actions into largers ones. But it provides
 no way to defer effects, much less any way to tie those effects to
-the closing of a database transaction. Interactor has no real concept
-of the database at all, as it operates at a higher level of
+the closing of a database transaction, because Interactor has no concept
+of the database at all. It operates at a higher level of
 abstraction; our original goal here was a reliable database log of
 a complex application, so it's not surprising it didn't quite line
 up. I also prefer declarative interfaces to things having to imperatively
