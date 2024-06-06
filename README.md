@@ -69,8 +69,8 @@ recording events. Rails is famously opinionated, but in practice
 doesn't provide much guidance for how application logic should be
 invoked, or what callers should expect. As applications grow,
 symptoms of that vacuum often include controllers being slimmed
-down into thicker models, followed by the creation of [some kind of
-service layer](https://www.youtube.com/watch?v=Oz1c1xdoUFc&t=11s) once functionality stops corresponding one-to-one
+down into thicker models, followed by the creation of some kind of
+service layer once functionality stops corresponding one-to-one
 with model classes.  (I'm using "service layer" in the [Martin Fowler
 sense](https://martinfowler.com/eaaCatalog/serviceLayer.html) of modules that "[establish] a set of available operations
 and [coordinate] the application's response in each operation."
