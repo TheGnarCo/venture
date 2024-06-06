@@ -7,7 +7,7 @@ Gem::Specification.new do |gem|
   gem.version = Venture::VERSION
   gem.summary = Venture::SUMMARY
   gem.description = Venture::SUMMARY
-  gem.authors = ["Erik Cameron"]
+  gem.authors = ["Erik Cameron", "Steve Zelaznik"]
   gem.license = "MIT"
 
   gem.add_dependency "activerecord", ">= 5"

@@ -8,7 +8,7 @@ Event log with composable services, atomic actions and deferred effects for Acti
 
 ## About
 
-This gem provides a framework for service-layer code in Ruby apps backed by databases. It implements the following, in ascending order of perverse implications:
+This gem provides a framework for service-layer code in Ruby apps backed by ActiveRecord. It implements the following, in ascending order of perverse implications for debugging:
 
 - Services either complete successfully or raise; i.e., every service call is a bang method
 - On success, one or more events are recorded indicating what happens, and on failure, one or more events are created indicating what went wrong
