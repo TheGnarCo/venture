@@ -53,7 +53,7 @@ of two ways:
 In case of success, `as_event!` will record any events indicated,
 then check to see if it's executing inside another call to `as_event!`.
 If so, it will queue any effects for execution after the outermost
-call returns, the close its database transaction and return to its
+call returns, then close its database transaction and return to its
 caller. If this is the outermost call to `as_event!` it closes its
 transaction, commiting the changes to the database, and runs any
 queued effects. In this way, simple services can be composed into
