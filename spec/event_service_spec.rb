@@ -2,19 +2,19 @@ require "spec_helper"
 
 RSpec.describe Venture do
   before(:each) do
-    stub_const('TestOkEvent', Class.new(Event) do
+    stub_const('TestOkEvent', Class.new(Venture.event_base_class) do
       def self.params(params)
         params.merge(validation_message: "success")
       end
     end)
 
-    stub_const('TestFailureEvent', Class.new(Event) do
+    stub_const('TestFailureEvent', Class.new(Venture.event_base_class) do
       def self.params(params)
         params.merge(validation_message: "failure")
       end
     end)
 
-    stub_const('TestEventError', Class.new(Venture::EventError) do
+    stub_const('TestEventError', Class.new(Venture::Errors::EventError) do
       event TestFailureEvent
     end)
   end

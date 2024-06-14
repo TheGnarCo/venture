@@ -1,12 +1,16 @@
-require 'ostruct'
 require 'active_record'
 require 'request_store'
+require_relative './venture/config'
+require_relative './venture/events'
+require_relative './venture/errors'
+require_relative './venture/migrate'
+require_relative './venture/success'
 
 module Venture
   extend self
+  extend Forwardable
 
-  def config; @config ||= OpenStruct.new; end
-  def configure; yield config; end
+  def_delegators Config, :event_base_class, :valid_event_class?
 
   def as_event!(base_params: {}, fail_as: default_error_event_class)
     if !base_params.is_a?(Hash)
@@ -55,12 +59,12 @@ module Venture
         end
 
         if !success.is_a?(Success)
-          raise EventReturnError,
+          raise Errors::ReturnError,
             "service block must return an instance of Venture::Success"
         end
 
         if pushed_token != popped_token
-          raise EventReturnError,
+          raise Errors::ReturnError,
             "There was a non-local return in your nested calls to as_event!, help!"
         end
 
@@ -84,13 +88,14 @@ module Venture
         event_base_class.where(id: created_events.map(&:id)).to_a
       end
 
+      # note we are intentionally rescuing from Exception here rather than StandardError
+      # because we need to reset the nested state if the thread is reused, and if it's
+      # not reused, it doesn't matter. (and we are in no position to say whether it will
+      # be reused.) open to other perspectives but this seems correct.
     rescue Exception => e
-      # we always clear the thread state on error, even if
-      # a non standard error is being raised because the thread
-      # may presumably be reused
       clear_nested_state
 
-      if e.is_a?(EventError)
+      if e.is_a?(Errors::EventError)
         # these exceptions provide a failure event of their own, allowing callers to
         # specify one or more failure event types other than the one passed in by
         # the call to as_event! which is useful when you only know what the failure
@@ -127,15 +132,11 @@ module Venture
     if stack_size == 0
       this_success_queue = success_queue
       clear_nested_state
-      this_success_queue.each { |success| success.effects&.call(events_created) }
+      this_success_queue.each { |success| call_effects!(success) }
     end
 
     # return the events created by the transaction block
     events_created
-  end
-
-  def valid_event_class?(event_class)
-    event_class.is_a?(Class) && event_class.ancestors.include?(event_base_class)
   end
 
   private
@@ -183,6 +184,12 @@ module Venture
     end
   end
 
+  def call_effects!(success, events_created, base_params)
+    success.events&.call(events_created)
+  rescue => e
+    create_event!(EffectsErrorEvent, base_params, error: e)
+  end
+
   def make_stack_token; rand(36**8).to_s(36); end
 
   def event_stack; RequestStore.store[:_event_service_stack] ||= []; end
@@ -201,6 +208,4 @@ module Venture
     RequestStore.store[:_event_service_stack] = []
     RequestStore.store[:_event_service_queue] = []
   end
-
-  def event_base_class; config.event_base_class; end
 end

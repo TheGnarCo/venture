@@ -14,4 +14,5 @@ Gem::Specification.new do |gem|
   gem.add_dependency "request_store", "~> 1.5.0"
 
   gem.add_development_dependency "rspec-rails"
+  gem.add_development_dependency "sqlite3", "~> 1.4"
 end
