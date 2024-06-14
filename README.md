@@ -1,24 +1,41 @@
 # Venture: an event architecture for Rails
 
-Event log with composable services, atomic actions and deferred effects for ActiveRecord.
+Event log with composable services, atomic actions and deferred
+effects for ActiveRecord. Or a service composition tool with an
+event log. Either way. Both!
 
 ## Todo
 
 - Shore up error handling in effect blocks
+- Finish up test suite
 
 ## About
 
-This gem provides a framework for service-layer code in Ruby apps backed by ActiveRecord. It implements the following, in ascending order of perverse implications for debugging:
+This gem provides two things for ActiveRecord-based applications, which
+are not conceptually the same thing, but (I submit) belong together for
+practical reasons:
 
-- Services either complete successfully or raise; i.e., every service call is a bang method
+- An extensible model for recording significant events, suitable for audit trails, event sourcing and the like
+- A framework for structuring service-layer code that manages database transactions and side effect dispatch, and allows simple actions to be composed into more complex ones
+
+## The pattern
+
+We want the following pattern, in ascending order of perverse
+implications for debugging:
+
+- Services either complete successfully or raise; i.e., every service call is a bang method<sup>\*<sup>
 - On success, one or more events are recorded indicating what happens, and on failure, one or more events are created indicating what went wrong
 - Every service call implies a database transaction
 - Side effects of successful operations should be deferred until after the transaction closes
 - Services are composable; i.e., you can nest calls without all hell breaking loose
 
-## What?
+<sup>\*<sup> I love Rails but disagree with the convention of
+representing user errors&mdash;anything you'd return a 400 code
+for&mdash;with exceptions. I don't need a stacktrace built every
+(or any) time a user typoes their password or a request comes in
+for a non-existent id.
 
-Suppose we want (among other things) an event recorded every time a `Thing` is created:
+Suppose we want an event recorded every time a `Thing` is created:
 
 ```ruby
 class ThingService
@@ -92,11 +109,11 @@ in the case of total success, like charging the customer---we'll
 call those "effects." Other examples include sending emails, queuing
 Sidekiq jobs, and so on. In order for service layer actions to be
 truly composable, they have to be able to defer those effects until
-an entire _composed_ operation succeeds, not just until after its
-own `as_event!` block exits succesfully. Developers should not be forced
-to reckon with this every time they add a module to the service
-layer. Instead, the service layer can abstract this functionality,
-providing consistent conventions and enforced behavior.
+an entire _composed_ operation succeeds, not just until the end of
+its own logic.  Developers should not be forced to reckon with this
+every time they add a module to the service layer. Instead, the
+service layer can abstract this functionality, providing consistent
+conventions and enforced behavior.
 
 This gem was extracted from an application for certifying state
 employees for work like rideshare driving or child care, where a
@@ -117,16 +134,17 @@ Let's start with the method to close an existing application:
 
 ```ruby
 module EmployeeCertificationService
+  include Venture
   extend self
 
   def close_application!(employee_application_id)
-    Venture.as_event!(
+    as_event!(
       base_params: { employee_application_id: },
       fail_as: CloseEmployeeApplicationError
     ) do
       EmployeeApplication.find(employee_application_id).close!
 
-      Venture::Success.new(
+      Success.new(
         events: EmployeeApplicationClosed => {}
         effects: ->(events) do
           Rails.logger.info("closed app id #{events.first.employee_application_id}")
