@@ -1,1 +1,1 @@
-class Venture::Events::EffectsErrorEvent < Venture::Event; end
+class Venture::Events::EffectsErrorEvent < Venture::Events::ErrorEvent; end

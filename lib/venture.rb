@@ -10,9 +10,16 @@ module Venture
   extend self
   extend Forwardable
 
-  def_delegators Config, :event_base_class, :valid_event_class?
+  def_delegators Config,
+    :configuration,
+    :configure,
+    :event_base_class,
+    :event_data_column_type,
+    :default_error_event_class,
+    :logger,
+    :valid_event_class?
 
-  def as_event!(base_params: {}, fail_as: default_error_event_class)
+  def as_event!(base_params: {}, fail_as: Venture.default_error_event_class)
     if !base_params.is_a?(Hash)
       raise ArgumentError, "base params should be a hash"
     end
@@ -78,7 +85,7 @@ module Venture
         begin
           create_event_list!(success.events, base_params, created_events)
         rescue => e
-          ActiveRecord::Base.logger.error("Operation succeeded but can't create event, rolling back")
+          Venture.logger.error("Operation succeeded but can't create event, rolling back")
           raise
         end
 
@@ -100,7 +107,7 @@ module Venture
         # specify one or more failure event types other than the one passed in by
         # the call to as_event! which is useful when you only know what the failure
         # event should be once it happens
-        ActiveRecord::Base.logger.error("#{e.class.event}: #{e.message}")
+        Venture.logger.error("#{e.class.event}: #{e.message}")
 
         # on failures, the .params method is called with the passed in base_params and the
         # exception encountered
@@ -115,7 +122,7 @@ module Venture
       elsif e.is_a?(StandardError)
         # other failures, where we record the default failure event given in the call
         # to as_event!
-        ActiveRecord::Base.logger.error("#{fail_as}: #{e.message}")
+        Venture.logger.error("#{fail_as}: #{e.message}")
         create_event!(fail_as, base_params, error: e)
 
       else
@@ -150,7 +157,9 @@ module Venture
       params.merge!(error_message: error.message, error_type: error.class)
     end
 
-    params.merge!(event_class.params(params))
+    if event_class.respond_to?(:params)
+      params.merge!(event_class.params(params))
+    end
 
     event_class.create!(params)
   end
