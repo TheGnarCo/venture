@@ -1,46 +1,29 @@
 require "spec_helper"
 
 RSpec.describe Venture do
-  before(:each) do
-    stub_const('TestOkEvent', Class.new(Venture.event_base_class) do
-      def self.params(params)
-        params.merge(validation_message: "success")
-      end
-    end)
-
-    stub_const('TestFailureEvent', Class.new(Venture.event_base_class) do
-      def self.params(params)
-        params.merge(validation_message: "failure")
-      end
-    end)
-
-    stub_const('TestEventError', Class.new(Venture::Errors::EventError) do
-      event TestFailureEvent
-    end)
-  end
-
   describe "as_event!" do
     context "operation is successful" do
-      let (:driver) { create(:driver) }
-      let! (:block_return) {
-        Venture.as_event!(
-          base_params: { driver: }
-        ) do
-          create :driver, first_name: "created in block"
-          Venture::Success.new(events: { TestOkEvent => {} })
+      before(:all) do
+        Venture.as_event!(base_params: { name: "my event" }) do
+          Venture::Spec::Widget.create!(name: "my widget")
+          Venture::Success.new(events: { 
+            Venture::Spec::Events::TestOkEvent => {} 
+          })
         end
-      }
+      end
+
+      after(:all) { clear_db }
 
       it "runs the block" do
-        expect(Driver.last.first_name).to eq("created in block")
+        expect(Venture::Spec::Widget.last.name).to eq("my widget")
       end
 
       it "records success event" do
-        expect(TestOkEvent.count).to eq(1)
+        expect(Venture::Spec::Events::TestOkEvent.count).to eq(1)
       end
 
       it "updates params on success" do
-        expect(TestOkEvent.first.validation_message).to eq("success")
+        expect(Venture::Spec::Events::TestOkEvent.first.params["name"]).to eq("my event")
       end
     end
 
@@ -147,17 +130,17 @@ RSpec.describe Venture do
         end)
       end
 
-      let (:driver) { create(:driver) }
+      let (:widget) { Widget.create!(name: "first widget") }
       let! (:block_return) {
         Venture.as_event!(
           base_params: {},
         ) do
-          driver2 = create :driver, first_name: "created in block"
+          widget2 = Widget.create!(name: "second widget")
 
           Venture::Success.new(
             events: {
-              TestOkEvent => {driver: driver},
-              TestOkEvent2 => {driver: driver2}
+              TestOkEvent => {widget_id: widget.id},
+              TestOkEvent2 => {widget_id: widget2.id}
             }
           )
         end
@@ -169,49 +152,20 @@ RSpec.describe Venture do
       end
 
       it "records per-event type params" do
-        expect(TestOkEvent.first.validation_message).to eq("success")
-        expect(TestOkEvent2.first.validation_message).to eq("success too")
-      end
-    end
-
-    context "operation is successful with multiple success events, returning driver_applications" do
-      before(:each) do
-        stub_const('TestOkEvent2', Class.new(Event) do
-          def self.params(params)
-            params.merge(validation_message: "success too")
-          end
-        end)
-      end
-
-      let (:driver) { create(:driver) }
-      let! (:block_return) {
-        Venture.as_event!(
-          base_params: {},
-        ) do
-          app = create(:driver_application, driver: driver)
-
-          Venture::Success.new(
-            events: {
-              TestOkEvent => { driver_application: app }
-            }
-          )
-        end
-      }
-
-      it "populates the driver information" do
-        expect(TestOkEvent.first.driver).to eq(driver)
+        expect(TestOkEvent.first.params["validation_message"]).to eq("success")
+        expect(TestOkEvent2.first.params["validation_message"]).to eq("success too")
       end
     end
 
     context "operation raises an error with default failure event" do
-      let (:driver) { create(:driver, first_name: "first driver" ) }
+      let (:widget) { Widget.create!(name: "first widget") }
       let! (:block_return) {
         begin
           Venture.as_event!(
-            base_params: { driver: }
+            base_params: { widget_id: widget.id }
           ) do
-            create :driver, first_name: "created in block"
-            raise "boom!"
+            Widget.create!(name: "created in block")
+            raise Venture::Spec::Errors::WidgetError, "boom!"
           end
         rescue => e
           e
@@ -219,7 +173,7 @@ RSpec.describe Venture do
       }
 
       it "rolls back the changes" do
-        expect(Driver.last.first_name).to eq("first driver")
+        expect(Widget.last.name).to eq("first widget")
       end
 
       it "reraises the exception" do
@@ -228,26 +182,26 @@ RSpec.describe Venture do
       end
 
       it "records error event of the default type" do
-        expect(EventTypes::DefaultError.count).to eq(1)
+        expect(Venture::Events::ErrorEvent.count).to eq(1)
       end
 
       it "preserves exception type and message on default failure event" do
-        event = EventTypes::DefaultError.first
+        event = Venture::Events::ErrorEvent.first
 
-        expect(event.error_message).to eq("boom!")
-        expect(event.error_type).to eq("RuntimeError")
+        expect(event.params["error_message"]).to eq("boom!")
+        expect(event.params["error_type"]).to eq("RuntimeError")
       end
     end
 
     context "operation raises an error with specified failure event" do
-      let (:driver) { create(:driver, first_name: "first driver" ) }
+      let (:widget) { Widget.create!(name: "first widget") }
       let! (:block_return) {
         begin
           Venture.as_event!(
-            base_params: { driver: },
+            base_params: { widget_id: widget.id },
             fail_as: TestFailureEvent,
           ) do
-            create :driver, first_name: "created in block"
+            Widget.create!(name: "created in block")
             raise "boom!"
           end
         rescue => e
@@ -271,19 +225,19 @@ RSpec.describe Venture do
       it "preserves exception type and message on default failure event" do
         event = TestFailureEvent.first
 
-        expect(event.error_message).to eq("boom!")
-        expect(event.error_type).to eq("RuntimeError")
+        expect(event.params["error_message"]).to eq("boom!")
+        expect(event.params["error_type"]).to eq("RuntimeError")
       end
     end
 
     context "operation raises an EventError" do
-      let (:driver) { create(:driver, first_name: "first driver" ) }
+      let (:widget) { Widget.create!(name: "first widget") }
       let! (:block_return) {
         begin
           Venture.as_event!(
-            base_params: { driver: }
+            base_params: { widget_id: widget.id }
           ) do
-            create :driver, first_name: "created in block"
+            Widget.create!(name: "created in block")
             raise TestEventError.new(
               "boom!",
               remote_status_code: 404,
@@ -297,8 +251,8 @@ RSpec.describe Venture do
 
       it "passes parameters into the event record" do
         event = TestFailureEvent.first
-        expect(event.remote_status_code).to eq('404') # The database column is text, not an integer
-        expect(event.remote_status_text).to eq('not found')
+        expect(event.params["remote_status_code"]).to eq('404')
+        expect(event.params["remote_status_text"]).to eq('not found')
       end
 
       it "reraises the exception" do
@@ -311,14 +265,14 @@ RSpec.describe Venture do
       end
 
       it "updates params on failure" do
-        expect(TestFailureEvent.first.validation_message).to eq("failure")
+        expect(TestFailureEvent.first.params["validation_message"]).to eq("failure")
       end
 
       it "preserves exception type and message on default failure event" do
         event = TestFailureEvent.first
 
-        expect(event.error_message).to eq("boom!")
-        expect(event.error_type).to eq("TestEventError")
+        expect(event.params["error_message"]).to eq("boom!")
+        expect(event.params["error_type"]).to eq("TestEventError")
       end
     end
 
@@ -327,9 +281,9 @@ RSpec.describe Venture do
         expect do
           Venture.as_event! do
             Venture.as_event! do
-              driver = create :driver, first_name: "created in block"
+              widget = Widget.create!(name: "created in block")
               Venture::Success.new(
-                events: { TestOkEvent => { driver: driver } }
+                events: { TestOkEvent => { widget_id: widget.id } }
               )
             end
 
@@ -338,32 +292,32 @@ RSpec.describe Venture do
         end.to change { TestOkEvent.count }.by(1)
 
         event = TestOkEvent.last
-        expect(event.driver.first_name).to eq('created in block')
+        expect(Widget.find(event.params["widget_id"]).name).to eq('created in block')
       end
 
       it "allows failed inner event blocks to record failure events" do
-        driver_uuid = SecureRandom.hex
+        error_uuid = SecureRandom.hex
         old_event_count = TestFailureEvent.count
-        old_driver_count = Driver.count
+        old_widget_count = Widget.count
 
         begin
           Venture.as_event! do
             Venture.as_event! do
-              driver = create :driver, first_name: "created in block"
-              raise TestEventError.new "error in inner block", driver_uuid: driver_uuid
+              widget = Widget.create!(name: "created in block")
+              raise TestEventError.new "error in inner block", error_uuid: error_uuid
             end
             Venture::Success.new
           end
         rescue TestEventError
         end
 
-        expect(Driver.count).to eq(old_driver_count)
+        expect(Widget.count).to eq(old_widget_count)
         expect(TestFailureEvent.count).to eq(old_event_count + 1)
-        expect(Driver.where(first_name: "created in block")).to be_empty
+        expect(Widget.where(name: "created in block")).to be_empty
 
         event = TestFailureEvent.last
-        expect(event.driver_uuid).to eq(driver_uuid)
-        expect(event.error_message).to eq("error in inner block")
+        expect(event.params["error_uuid"]).to eq(error_uuid)
+        expect(event.params["error_message"]).to eq("error in inner block")
       end
     end
   end

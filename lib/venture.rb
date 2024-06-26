@@ -3,7 +3,6 @@ require 'request_store'
 require_relative './venture/config'
 require_relative './venture/events'
 require_relative './venture/errors'
-require_relative './venture/migrate'
 require_relative './venture/success'
 
 module Venture
@@ -14,7 +13,7 @@ module Venture
     :configuration,
     :configure,
     :event_base_class,
-    :event_data_column_type,
+    :event_params_column_type,
     :default_error_event_class,
     :logger,
     :valid_event_class?
@@ -139,7 +138,9 @@ module Venture
     if stack_size == 0
       this_success_queue = success_queue
       clear_nested_state
-      this_success_queue.each { |success| call_effects!(success) }
+      this_success_queue.each do |success|
+        call_effects!(success, events_created, base_params)
+      end
     end
 
     # return the events created by the transaction block
@@ -161,7 +162,7 @@ module Venture
       params.merge!(event_class.params(params))
     end
 
-    event_class.create!(params)
+    event_class.create!(params:)
   end
 
   def create_event_list!(event_param_list, base_params, created_events = [])
@@ -194,9 +195,15 @@ module Venture
   end
 
   def call_effects!(success, events_created, base_params)
-    success.events&.call(events_created)
+    if success.effects
+      if success.effects.respond_to?(:call)
+        success.effects.call(events_created)
+      else
+        raise Venture::Errors::EffectsError, "effects are not callable"
+      end
+    end
   rescue => e
-    create_event!(EffectsErrorEvent, base_params, error: e)
+    create_event!(Venture::Events::EffectsErrorEvent, base_params, error: e)
   end
 
   def make_stack_token; rand(36**8).to_s(36); end
