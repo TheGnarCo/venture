@@ -10,9 +10,10 @@ Gem::Specification.new do |gem|
   gem.authors = ["Erik Cameron", "Steve Zelaznik"]
   gem.license = "MIT"
 
-  gem.add_dependency "activerecord", ">= 5"
+  gem.add_dependency "rails", ">= 6"
   gem.add_dependency "request_store", "~> 1.5.0"
 
   gem.add_development_dependency "rspec-rails"
+  gem.add_development_dependency "pry"
   gem.add_development_dependency "sqlite3", "~> 1.4"
 end

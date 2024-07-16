@@ -1,10 +1,22 @@
-require 'active_record'
-require 'venture'
+ENV["RAILS_ENV"] ||= "test"
 
-require_relative 'support/logger'
-require_relative 'support/events'
-require_relative 'support/errors'
-require_relative 'support/widget'
+require "venture"
+require "rails/all"
+require "spec_helper"
+require "rspec/rails"
+require "pry"
+
+require_relative "support/logger"
+require_relative "support/events"
+require_relative "support/errors"
+require_relative "support/widget"
+
+
+ActiveRecord::Migration.maintain_test_schema!
+
+RSpec.configure do |config|
+  config.use_transactional_fixtures = true
+end
 
 Venture.configure do |config|
   config.logger = Venture::Spec::Logger

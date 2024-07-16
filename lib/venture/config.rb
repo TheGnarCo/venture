@@ -23,7 +23,6 @@ module Venture::Config
   def table_name_prefix; configuration.table_name_prefix || "ve_"; end
 
   def valid_event_class?(event_class)
-    puts event_class.ancestors
     event_class.is_a?(Class) && event_class.ancestors.include?(event_base_class)
   end
 end
