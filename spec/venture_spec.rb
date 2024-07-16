@@ -159,13 +159,14 @@ RSpec.describe Venture do
 
     context "operation raises an error with default failure event" do
       let (:widget) { Widget.create!(name: "first widget") }
+
       let! (:block_return) {
         begin
           Venture.as_event!(
             base_params: { widget_id: widget.id }
           ) do
             Widget.create!(name: "created in block")
-            raise Venture::Spec::Errors::WidgetError, "boom!"
+            raise "boom!"
           end
         rescue => e
           e
@@ -219,7 +220,7 @@ RSpec.describe Venture do
       end
 
       it "updates params on failure" do
-        expect(TestFailureEvent.first.validation_message).to eq("failure")
+        expect(TestFailureEvent.first.params["validation_message"]).to eq("failure")
       end
 
       it "preserves exception type and message on default failure event" do
@@ -251,7 +252,7 @@ RSpec.describe Venture do
 
       it "passes parameters into the event record" do
         event = TestFailureEvent.first
-        expect(event.params["remote_status_code"]).to eq('404')
+        expect(event.params["remote_status_code"]).to eq(404)
         expect(event.params["remote_status_text"]).to eq('not found')
       end
 
@@ -272,7 +273,7 @@ RSpec.describe Venture do
         event = TestFailureEvent.first
 
         expect(event.params["error_message"]).to eq("boom!")
-        expect(event.params["error_type"]).to eq("TestEventError")
+        expect(event.params["error_type"]).to eq("Venture::Spec::Errors::TestEventError")
       end
     end
 
