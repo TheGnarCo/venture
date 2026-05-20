@@ -4,11 +4,6 @@ Event log with composable services, atomic actions and deferred
 effects for ActiveRecord. Or a service composition tool with an
 event log. Either way. Both!
 
-## Todo
-
-- Shore up error handling in effect blocks
-- Finish up test suite
-
 ## About
 
 This gem provides two things for ActiveRecord-based applications, which
