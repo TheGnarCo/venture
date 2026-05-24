@@ -13,6 +13,11 @@ practical reasons:
 - An extensible model for recording significant events, suitable for audit trails, event sourcing and the like
 - A framework for structuring service-layer code that manages database transactions and side effect dispatch, and allows simple actions to be composed into more complex ones
 
+In practical terms, it is difficult or impossible to have the first
+without the second, for reasons that will hopefully become clear.
+This gem was extracted from production software that has now been
+running in the wild for a few years with no issues.
+
 ## The pattern
 
 We want the following pattern, in ascending order of perverse
