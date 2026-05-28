@@ -18,6 +18,9 @@ without the second, for reasons that will hopefully become clear.
 This gem was extracted from production software that has now been
 running in the wild for a few years with no issues.
 
+Written by Erik Cameron with significant contributions pre- and post-release
+from Steve Zelaznik.
+
 ## The pattern
 
 We want the following pattern, in ascending order of perverse
